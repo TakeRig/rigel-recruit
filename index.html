@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RIG-EL — 面談管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+:root{
+  --black:#101010;--white:#FAFAF8;--ink:#1A1A1A;
+  --orange:#E8632C;--orange-dark:#C44E1F;--orange-bg:#FDEEE5;
+  --gray-50:#F5F4F2;--gray-100:#ECEAE6;--gray-200:#DDD9D3;--gray-400:#9C968C;--gray-600:#6B6660;
+  --green:#2E6B4F;--green-bg:#E7F2EC;
+  --blue:#2A4A7A;--blue-bg:#E8EEF7;
+  --amber:#8A5A1E;--amber-bg:#FBF0DF;
+  --rose:#8A2E4E;--rose-bg:#FBE7EE;
+  --purple:#5A3D8A;--purple-bg:#F0EAFB;
+  --red:#8A2424;--red-bg:#FBE7E7;
+  --stone:#5C5650;--stone-bg:#EEECE9;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--white);color:var(--ink);font-size:13px;min-height:100vh}
+.en{font-family:'Space Grotesk',sans-serif}
+
+.site-header{background:var(--black);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;border-bottom:3px solid var(--orange)}
+.logo-wrap{display:flex;align-items:center;gap:14px}
+.logo-img{height:24px;width:auto}
+.logo-sub{font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--gray-400);letter-spacing:0.18em;border-left:1px solid #333;padding-left:14px}
+.header-right{display:flex;align-items:center;gap:10px}
+.count-pill{font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--black);letter-spacing:0.05em;background:var(--orange);padding:5px 14px;border-radius:2px;font-weight:600}
+.sync-pill{font-family:'Space Grotesk',sans-serif;font-size:10px;letter-spacing:0.06em;padding:5px 12px;border-radius:2px;display:flex;align-items:center;gap:6px}
+.sync-pill.ok{color:#7FE0A8;border:1px solid #2E6B4F}
+.sync-pill.err{color:#F09595;border:1px solid #8A2424}
+.sync-pill.loading{color:var(--gray-400);border:1px solid #333}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+.btn-hd{font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:0.08em;padding:8px 16px;background:transparent;color:var(--gray-400);border:1px solid #333;cursor:pointer;transition:all .2s;border-radius:2px}
+.btn-hd:hover{color:var(--white);border-color:var(--white)}
+.btn-hd-add{background:var(--orange);color:var(--black);border:none;font-weight:600}
+.btn-hd-add:hover{background:#fff;color:var(--black);opacity:1}
+
+.dashboard{background:var(--gray-50);border-bottom:1px solid var(--gray-200)}
+.dash-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--gray-200)}
+.dash-cell{background:var(--gray-50);padding:22px 16px;text-align:center;transition:background .2s}
+.dash-cell:hover{background:var(--white)}
+.dash-cell.highlight{background:var(--black)}
+.dash-cell.highlight .dash-n{color:var(--orange)}
+.dash-cell.highlight .dash-l{color:var(--gray-400)}
+.dash-cell.highlight .dash-sub{color:var(--gray-400)}
+.dash-n{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:700;color:var(--black);line-height:1}
+.dash-l{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--gray-600);letter-spacing:0.14em;margin-top:6px;text-transform:uppercase;font-weight:500}
+.dash-sub{font-size:10px;color:var(--gray-400);margin-top:3px}
+
+.filters{padding:14px 32px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--gray-200);background:var(--white);position:sticky;top:64px;z-index:40}
+.filters select,.filters input{font-size:12px;padding:8px 12px;border:1px solid var(--gray-200);background:var(--white);color:var(--ink);font-family:'Noto Sans JP',sans-serif;flex:1;min-width:120px;appearance:none;-webkit-appearance:none;letter-spacing:0.02em;border-radius:2px}
+.filters select:focus,.filters input:focus{outline:none;border-color:var(--orange)}
+.search-wrap{flex:2;min-width:160px}
+
+.cards-wrap{padding:24px 32px}
+.section-label{font-family:'Space Grotesk',sans-serif;font-size:10px;letter-spacing:0.2em;color:var(--gray-600);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:12px;font-weight:600}
+.section-label::after{content:'';flex:1;height:1px;background:var(--gray-200)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+.card{background:var(--white);border:1px solid var(--gray-200);transition:border-color .2s,transform .15s,box-shadow .2s;border-radius:3px;overflow:hidden}
+.card:hover{border-color:var(--orange);transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,0.06)}
+.card-img{width:100%;height:160px;object-fit:cover;display:block}
+.card-img-ph{width:100%;height:160px;background:var(--gray-50);display:flex;align-items:center;justify-content:center;color:var(--gray-200);font-size:36px}
+.card-body{padding:14px 16px}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+.card-name{font-size:15px;font-weight:700;color:var(--ink);line-height:1.2}
+.card-sns{font-size:11px;color:var(--gray-600);margin-top:2px}
+.st-tag{font-family:'Space Grotesk',sans-serif;font-size:10px;padding:3px 8px;letter-spacing:0.02em;white-space:nowrap;flex-shrink:0;font-weight:600;border-radius:2px}
+.card-meta{font-size:11px;color:var(--gray-600);margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.via-dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+.sep{color:var(--gray-200)}
+.feature-box{font-size:11px;color:var(--ink);background:var(--orange-bg);border-left:2px solid var(--orange);padding:6px 8px;margin-bottom:8px;line-height:1.5}
+.feature-label{font-family:'Space Grotesk',sans-serif;font-size:9px;color:var(--orange-dark);letter-spacing:0.1em;font-weight:700;display:block;margin-bottom:2px}
+.skills-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.skill-tag{font-size:10px;padding:2px 7px;border:1px solid var(--gray-200);color:var(--gray-600);letter-spacing:0.01em;border-radius:2px}
+.card-memo{font-size:11px;color:var(--gray-600);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-top:1px solid var(--gray-100);padding-top:8px;margin-top:6px}
+.doc-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.doc-chip{font-family:'Space Grotesk',sans-serif;font-size:10px;padding:4px 9px;background:var(--gray-50);border:1px solid var(--gray-200);color:var(--ink);border-radius:2px;display:flex;align-items:center;gap:4px;font-weight:500}
+.doc-chip a{color:inherit;text-decoration:none}
+.doc-chip::before{content:'📄';font-size:10px}
+.card-actions{display:flex;gap:1px;border-top:1px solid var(--gray-100);margin-top:10px}
+.act-btn{flex:1;padding:9px;background:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--gray-600);letter-spacing:0.1em;font-weight:600;transition:background .15s}
+.act-btn:hover{background:var(--orange-bg);color:var(--orange-dark)}
+
+.st-ca{background:var(--green-bg);color:var(--green)}
+.st-cb{background:var(--blue-bg);color:var(--blue)}
+.st-na{background:var(--amber-bg);color:var(--amber)}
+.st-nb{background:var(--rose-bg);color:var(--rose)}
+.st-am{background:var(--purple-bg);color:var(--purple)}
+.st-ad{background:var(--blue-bg);color:var(--blue)}
+.st-ai{background:var(--green-bg);color:var(--green)}
+.st-sa{background:var(--black);color:var(--orange)}
+.st-ji{background:var(--red-bg);color:var(--red)}
+.st-fu{background:var(--stone-bg);color:var(--stone)}
+.d-LINE{background:#1DB954}.d-INDEED{background:#2557A7}.d-sho{background:var(--purple)}
+.d-z{background:var(--amber)}.d-h{background:var(--rose)}.d-o{background:var(--gray-400)}
+
+.empty{padding:64px 32px;text-align:center;color:var(--mid)}
+.empty-title{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;margin-bottom:8px;color:var(--ink)}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(16,16,16,0.7);z-index:200;overflow-y:auto;padding:32px 16px}
+.overlay.show{display:block}
+.modal{background:var(--white);max-width:620px;margin:0 auto;border-radius:3px;overflow:hidden}
+.modal-header{background:var(--black);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--orange)}
+.modal-header h2{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--white);letter-spacing:0.02em}
+.modal-close{background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:18px;padding:4px}
+.modal-close:hover{color:var(--orange)}
+.modal-body{padding:28px}
+.photo-area-wrap{display:flex;align-items:center;gap:20px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--gray-200)}
+.photo-area{width:88px;height:88px;border:2px dashed var(--gray-200);background:var(--gray-50);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;flex-shrink:0;border-radius:3px}
+.photo-area:hover{border-color:var(--orange)}
+.photo-area img{width:100%;height:100%;object-fit:cover}
+.photo-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.photo-hint{font-size:11px;color:var(--gray-600);line-height:1.9;letter-spacing:0.02em}
+.btn-rmphoto{font-family:'Space Grotesk',sans-serif;font-size:10px;padding:4px 10px;border:1px solid var(--gray-200);background:var(--white);color:var(--gray-600);cursor:pointer;margin-top:8px;letter-spacing:0.04em;display:none;border-radius:2px}
+.btn-rmphoto:hover{border-color:var(--red);color:var(--red)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{margin-bottom:0}
+.field.full{grid-column:1/-1}
+.field label{display:block;font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--gray-600);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:5px;font-weight:600}
+.field input,.field select,.field textarea{width:100%;font-size:13px;padding:9px 12px;border:1px solid var(--gray-200);background:var(--white);color:var(--ink);font-family:'Noto Sans JP',sans-serif;border-radius:2px;appearance:none;-webkit-appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--orange)}
+.field textarea{resize:vertical;min-height:60px}
+.feature-field textarea{border-color:var(--orange-bg);background:var(--orange-bg)}
+.feature-field textarea:focus{border-color:var(--orange);background:var(--white)}
+.skill-grid{display:flex;flex-wrap:wrap;gap:6px}
+.sk-btn{font-size:11px;padding:5px 11px;border:1px solid var(--gray-200);background:var(--white);color:var(--gray-600);cursor:pointer;font-family:'Noto Sans JP',sans-serif;letter-spacing:0.02em;transition:all .15s;border-radius:2px}
+.sk-btn:hover{border-color:var(--orange);color:var(--orange-dark)}
+.sk-btn.on{background:var(--black);color:var(--orange);border-color:var(--black)}
+.other-input{display:none;margin-top:8px;width:100%;font-size:13px;padding:9px 12px;border:1px solid var(--gray-200);background:var(--white);color:var(--ink);font-family:'Noto Sans JP',sans-serif}
+.other-input:focus{outline:none;border-color:var(--orange)}
+.doc-upload-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.doc-upload-btn{font-family:'Space Grotesk',sans-serif;font-size:11px;padding:8px 16px;border:1px dashed var(--gray-200);background:var(--gray-50);color:var(--gray-600);cursor:pointer;border-radius:2px;position:relative;font-weight:500;letter-spacing:0.02em}
+.doc-upload-btn:hover{border-color:var(--orange);color:var(--orange-dark)}
+.doc-upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.doc-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.doc-item{font-family:'Space Grotesk',sans-serif;font-size:11px;padding:5px 8px 5px 10px;background:var(--gray-50);border:1px solid var(--gray-200);color:var(--ink);border-radius:2px;display:flex;align-items:center;gap:6px}
+.doc-item button{background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:13px;padding:0;line-height:1}
+.doc-item button:hover{color:var(--red)}
+.upload-progress{font-size:10px;color:var(--gray-400);margin-top:4px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:20px 28px;border-top:1px solid var(--gray-200)}
+.btn-cancel{font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:0.06em;padding:10px 22px;border:1px solid var(--gray-200);background:var(--white);color:var(--gray-600);cursor:pointer;transition:all .15s;border-radius:2px;font-weight:600}
+.btn-cancel:hover{border-color:var(--ink);color:var(--ink)}
+.btn-save{font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:0.06em;padding:10px 26px;border:none;background:var(--orange);color:var(--black);cursor:pointer;font-weight:700;transition:background .2s;border-radius:2px}
+.btn-save:hover{background:var(--orange-dark);color:var(--white)}
+.btn-save:disabled{opacity:0.5;cursor:not-allowed}
+
+.staff-modal{background:var(--white);max-width:420px;margin:0 auto;border-radius:3px;overflow:hidden}
+.staff-list{padding:8px 28px 16px}
+.staff-item{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-100)}
+.staff-item:last-child{border-bottom:none}
+.staff-name{font-size:13px;color:var(--ink);font-weight:500}
+.staff-del{background:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--gray-400);padding:2px 8px;letter-spacing:0.04em}
+.staff-del:hover{color:var(--red)}
+.staff-add-row{display:flex;gap:8px;padding:14px 28px;border-top:1px solid var(--gray-200)}
+.staff-add-row input{flex:1;font-size:13px;padding:9px 12px;border:1px solid var(--gray-200);background:var(--white);color:var(--ink);font-family:'Noto Sans JP',sans-serif;border-radius:2px}
+.staff-add-row input:focus{outline:none;border-color:var(--orange)}
+.staff-add-btn{font-family:'Space Grotesk',sans-serif;font-size:11px;padding:9px 18px;background:var(--orange);color:var(--black);border:none;cursor:pointer;letter-spacing:0.06em;white-space:nowrap;border-radius:2px;font-weight:700}
+.staff-add-btn:hover{background:var(--orange-dark);color:var(--white)}
+
+.setup-banner{background:var(--amber-bg);border-bottom:1px solid var(--amber);padding:14px 32px;font-size:12px;color:var(--amber);line-height:1.6}
+.setup-banner code{background:rgba(0,0,0,0.06);padding:2px 6px;border-radius:2px;font-family:monospace}
+
+@media(max-width:600px){
+  .site-header{padding:0 16px}
+  .logo-sub{display:none}
+  .dash-row{grid-template-columns:repeat(3,1fr)}
+  .dash-cell:nth-child(4),.dash-cell:nth-child(5){display:none}
+  .filters{padding:12px 16px;top:64px}
+  .cards-wrap{padding:16px}
+  .cards{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .field.full{grid-column:1}
+  .modal-body{padding:20px 16px}
+  .modal-footer{padding:14px 16px}
+  .staff-list{padding:8px 16px 12px}
+  .staff-add-row{padding:12px 16px}
+  .setup-banner{padding:12px 16px}
+}
+</style>
+</head>
+<body>
+
+<div class="setup-banner" id="setup-banner" style="display:none">
+  ⚠️ Supabaseの接続情報が設定されていません。このファイル先頭の <code>SUPABASE_URL</code> と <code>SUPABASE_ANON_KEY</code> を、あなたのSupabaseプロジェクトの値に書き換えてください。
+</div>
+
+<header class="site-header">
+  <div class="logo-wrap">
+    <img class="logo-img" src="data:image/png;base64,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" alt="RIG-EL">
+    <span class="logo-sub en">面談管理</span>
+  </div>
+  <div class="header-right">
+    <span class="sync-pill loading en" id="sync-status"><span class="dot"></span>CONNECTING</span>
+    <span class="count-pill en" id="total-badge">0 RECORDS</span>
+    <button class="btn-hd en" onclick="openStaffModal()">STAFF</button>
+    <button class="btn-hd btn-hd-add en" onclick="openModal()">+ ADD</button>
+  </div>
+</header>
+
+<div class="dashboard">
+  <div class="dash-row">
+    <div class="dash-cell"><div class="dash-n en" id="s-total">0</div><div class="dash-l en">Total</div><div class="dash-sub">総面談数</div></div>
+    <div class="dash-cell"><div class="dash-n en" id="s-casual">0</div><div class="dash-l en">Casual</div><div class="dash-sub">カジュアル面談</div></div>
+    <div class="dash-cell highlight"><div class="dash-n en" id="s-next">0</div><div class="dash-l en">Next</div><div class="dash-sub">面談繋ぎ</div></div>
+    <div class="dash-cell"><div class="dash-n en" id="s-agent">0</div><div class="dash-l en">Agent</div><div class="dash-sub">エージェント</div></div>
+    <div class="dash-cell"><div class="dash-n en" id="s-ng">0</div><div class="dash-l en">NG</div><div class="dash-sub">辞退・不合格</div></div>
+  </div>
+</div>
+
+<div class="filters">
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="名前 / SNS / 担当者で検索…">
+  </div>
+  <select id="filter-st">
+    <option value="">ALL STATUS</option>
+    <option>カジュアル面談（採用）</option>
+    <option>カジュアル面談（業務連携）</option>
+    <option>次回面談調整（採用）</option>
+    <option>次回面談調整（業務連携）</option>
+    <option>エージェント連携（見込み）</option>
+    <option>エージェント連携（調整中）</option>
+    <option>エージェント連携（紹介済み）</option>
+    <option>採用</option>
+    <option>辞退</option>
+    <option>不合格</option>
+  </select>
+  <select id="filter-via">
+    <option value="">ALL ROUTE</option>
+    <option>LINE</option>
+    <option>INDEED</option>
+    <option>紹介</option>
+    <option>Z-Project</option>
+    <option>Haru-Naru</option>
+    <option>その他</option>
+  </select>
+</div>
+
+<div class="cards-wrap">
+  <div class="section-label en" id="section-label">0 Records</div>
+  <div class="cards" id="cards"></div>
+  <div class="empty" id="empty">
+    <div class="empty-title en">No Records Yet</div>
+    <div style="font-size:12px;letter-spacing:0.08em">右上の + ADD から面談を追加してください</div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Add Record</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="photo-area-wrap">
+        <div class="photo-area" id="photo-area" title="写真を選択">
+          <span style="font-size:24px;color:var(--gray-200)">＋</span>
+          <input type="file" accept="image/*" id="f-photo" onchange="loadPhoto(event)">
+        </div>
+        <div>
+          <div class="photo-hint">写真をアップロード<br>タップ / クリックで選択<br>正方形推奨</div>
+          <button class="btn-rmphoto" id="rm-photo" onclick="removePhoto()">削除</button>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>面談日時</label><input type="datetime-local" id="f-date"></div>
+        <div class="field"><label>担当者</label><select id="f-staff"><option value="">未選択</option></select></div>
+        <div class="field"><label>面談者名</label><input type="text" id="f-name" placeholder="田中 太郎"></div>
+        <div class="field"><label>LINE名 or SNS</label><input type="text" id="f-sns" placeholder="@tanaka_taro"></div>
+        <div class="field"><label>ステータス</label>
+          <select id="f-status">
+            <option>カジュアル面談（採用）</option>
+            <option>カジュアル面談（業務連携）</option>
+            <option>次回面談調整（採用）</option>
+            <option>次回面談調整（業務連携）</option>
+            <option>エージェント連携（見込み）</option>
+            <option>エージェント連携（調整中）</option>
+            <option>エージェント連携（紹介済み）</option>
+            <option>採用</option>
+            <option>辞退</option>
+            <option>不合格</option>
+          </select>
+        </div>
+        <div class="field"><label>何経由か</label>
+          <select id="f-via">
+            <option>LINE</option><option>INDEED</option><option>紹介</option>
+            <option>Z-Project</option><option>Haru-Naru</option><option>その他</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>スキル（複数選択可）</label>
+          <div class="skill-grid" id="skill-grid"></div>
+          <input type="text" class="other-input" id="other-skill-text" placeholder="その他のスキルを記入…">
+        </div>
+        <div class="field full">
+          <label>履歴書・職務経歴書</label>
+          <div class="doc-upload-row">
+            <button type="button" class="doc-upload-btn">
+              ＋ ファイルを追加
+              <input type="file" id="f-docs" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple onchange="loadDocs(event)">
+            </button>
+          </div>
+          <div class="doc-list" id="doc-list"></div>
+          <div class="upload-progress" id="upload-progress"></div>
+        </div>
+        <div class="field full feature-field"><label>特徴（人物像）</label><textarea id="f-feature" placeholder="性格・雰囲気・印象など…"></textarea></div>
+        <div class="field full"><label>メモ・議事録</label><textarea id="f-memo" placeholder="面談内容や気になった点など…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel en" onclick="closeModal()">CANCEL</button>
+      <button class="btn-save en" id="save-btn" onclick="saveEntry()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="staff-overlay" onclick="staffOverlayClick(event)">
+  <div class="staff-modal">
+    <div class="modal-header">
+      <h2 class="en">Staff Management</h2>
+      <button class="modal-close" onclick="closeStaffModal()">✕</button>
+    </div>
+    <div class="staff-list" id="staff-list"></div>
+    <div class="staff-add-row">
+      <input type="text" id="new-staff-name" placeholder="担当者名を入力" onkeydown="if(event.key==='Enter')addStaff()">
+      <button class="staff-add-btn en" onclick="addStaff()">追加</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+
+let sb = null;
+let supabaseReady = false;
+if (SUPABASE_URL.indexOf('YOUR_SUPABASE') === -1 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE') === -1) {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabaseReady = true;
+} else {
+  document.getElementById('setup-banner').style.display = 'block';
+}
+
+const SKILLS=['動画撮影','動画編集','画像編集','ライティング','写真撮影','ホームページデザイン','コーディング業務','広告運用','SNS運用','営業','提案書作成','マーケティング','企画・戦略立案','PM','その他'];
+const ST_MAP={'カジュアル面談（採用）':'st-ca','カジュアル面談（業務連携）':'st-cb','次回面談調整（採用）':'st-na','次回面談調整（業務連携）':'st-nb','エージェント連携（見込み）':'st-am','エージェント連携（調整中）':'st-ad','エージェント連携（紹介済み）':'st-ai','採用':'st-sa','辞退':'st-ji','不合格':'st-fu'};
+const VIA_DOT={LINE:'d-LINE',INDEED:'d-INDEED','紹介':'d-sho','Z-Project':'d-z','Haru-Naru':'d-h','その他':'d-o'};
+
+let data=[],staffList=[],editId=null,photoData=null,docFiles=[],uploadingDocs=false;
+
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function fmtDate(s){if(!s)return'—';const d=new Date(s);return d.toLocaleDateString('ja-JP',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
+
+function setSyncStatus(state){
+  const el=document.getElementById('sync-status');
+  el.className='sync-pill en '+state;
+  if(state==='ok')el.innerHTML='<span class="dot"></span>SYNCED';
+  else if(state==='err')el.innerHTML='<span class="dot"></span>OFFLINE';
+  else el.innerHTML='<span class="dot"></span>CONNECTING';
+}
+
+async function loadRecords(){
+  if(!supabaseReady){setSyncStatus('err');return;}
+  try{
+    const {data: rows, error} = await sb.from('rigel_interviews').select('*').order('created_at',{ascending:false});
+    if(error)throw error;
+    data=rows.map(r=>({
+      id:r.id,
+      date:r.interview_date,
+      name:r.name,
+      sns:r.sns,
+      staff:r.staff,
+      status:r.status,
+      via:r.via,
+      skills:r.skills||[],
+      feature:r.feature,
+      memo:r.memo,
+      photo:r.photo_url,
+      docs:r.docs||[]
+    }));
+    setSyncStatus('ok');
+    render();
+  }catch(e){
+    console.error('load error',e);
+    setSyncStatus('err');
+  }
+}
+
+async function loadStaff(){
+  if(!supabaseReady)return;
+  try{
+    const {data: rows, error} = await sb.from('rigel_staff').select('*').order('name');
+    if(error)throw error;
+    staffList=rows.map(r=>r.name);
+  }catch(e){console.error('staff load error',e);}
+}
+
+function subscribeRealtime(){
+  if(!supabaseReady)return;
+  sb.channel('rigel-interviews-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'rigel_interviews'},()=>{loadRecords();})
+    .subscribe();
+  sb.channel('rigel-staff-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'rigel_staff'},()=>{loadStaff().then(()=>populateStaffSelect());})
+    .subscribe();
+}
+
+function buildSkillGrid(){
+  const g=document.getElementById('skill-grid');g.innerHTML='';
+  SKILLS.forEach(s=>{const b=document.createElement('button');b.type='button';b.className='sk-btn';b.textContent=s;b.dataset.s=s;b.onclick=()=>{b.classList.toggle('on');document.getElementById('other-skill-text').style.display=document.querySelector('.sk-btn.on[data-s="その他"]')?'block':'none';};g.appendChild(b);});
+}
+function getSkills(){const sel=[...document.querySelectorAll('.sk-btn.on')].map(b=>b.dataset.s);if(sel.includes('その他')){const t=(document.getElementById('other-skill-text').value||'').trim();if(t)return sel.map(s=>s==='その他'?'その他：'+t:s);}return sel;}
+function setSkills(skills){document.querySelectorAll('.sk-btn').forEach(b=>{b.classList.toggle('on',skills.some(s=>s===b.dataset.s||(s.startsWith('その他：')&&b.dataset.s==='その他')));});const ot=skills.find(s=>s.startsWith('その他：'));const oi=document.getElementById('other-skill-text');if(ot){oi.style.display='block';oi.value=ot.replace('その他：','');}else{oi.style.display='none';oi.value='';}}
+
+function loadPhoto(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    photoData=ev.target.result;
+    const pa=document.getElementById('photo-area');
+    pa.innerHTML=`<img src="${photoData}" alt="photo"><input type="file" accept="image/*" id="f-photo" onchange="loadPhoto(event)">`;
+    document.getElementById('rm-photo').style.display='block';
+  };
+  r.readAsDataURL(f);
+}
+function removePhoto(){
+  photoData=null;
+  document.getElementById('photo-area').innerHTML=`<span style="font-size:24px;color:var(--gray-200)">＋</span><input type="file" accept="image/*" id="f-photo" onchange="loadPhoto(event)">`;
+  document.getElementById('rm-photo').style.display='none';
+}
+
+async function loadDocs(e){
+  const files=[...e.target.files];
+  if(!files.length)return;
+  uploadingDocs=true;
+  document.getElementById('save-btn').disabled=true;
+  const prog=document.getElementById('upload-progress');
+  for(const f of files){
+    prog.textContent='アップロード中: '+f.name;
+    try{
+      if(supabaseReady){
+        const path=Date.now()+'_'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const {error}=await sb.storage.from('rigel-docs').upload(path,f);
+        if(error)throw error;
+        const {data:urlData}=sb.storage.from('rigel-docs').getPublicUrl(path);
+        docFiles.push({name:f.name,url:urlData.publicUrl});
+      }else{
+        const dataUrl=await new Promise(res=>{const r=new FileReader();r.onload=ev=>res(ev.target.result);r.readAsDataURL(f);});
+        docFiles.push({name:f.name,url:dataUrl});
+      }
+      renderDocList();
+    }catch(err){
+      console.error('doc upload failed',err);
+      alert('ファイルのアップロードに失敗しました: '+f.name);
+    }
+  }
+  prog.textContent='';
+  uploadingDocs=false;
+  document.getElementById('save-btn').disabled=false;
+  e.target.value='';
+}
+function renderDocList(){
+  const dl=document.getElementById('doc-list');
+  dl.innerHTML=docFiles.map((d,i)=>`<span class="doc-item">${esc(d.name)}<button onclick="removeDoc(${i})">✕</button></span>`).join('');
+}
+function removeDoc(i){docFiles.splice(i,1);renderDocList();}
+
+function renderStaffList(){
+  const sl=document.getElementById('staff-list');
+  if(!staffList.length){sl.innerHTML='<div style="padding:20px 0;color:var(--gray-400);font-size:12px;letter-spacing:0.06em">担当者が登録されていません</div>';return;}
+  sl.innerHTML=staffList.map((s,i)=>`<div class="staff-item"><span class="staff-name">${esc(s)}</span><button class="staff-del" onclick="deleteStaff(${i})">削除</button></div>`).join('');
+}
+async function addStaff(){
+  const inp=document.getElementById('new-staff-name');
+  const name=(inp.value||'').trim();
+  if(!name)return;
+  if(staffList.includes(name)){inp.value='';return;}
+  try{
+    if(supabaseReady){
+      const {error}=await sb.from('rigel_staff').insert({name});
+      if(error)throw error;
+    }
+    staffList.push(name);
+    renderStaffList();populateStaffSelect();
+  }catch(e){console.error('add staff failed',e);alert('担当者の追加に失敗しました');}
+  inp.value='';
+}
+async function deleteStaff(i){
+  const name=staffList[i];
+  try{
+    if(supabaseReady){
+      const {error}=await sb.from('rigel_staff').delete().eq('name',name);
+      if(error)throw error;
+    }
+    staffList.splice(i,1);
+    renderStaffList();populateStaffSelect();
+  }catch(e){console.error('delete staff failed',e);alert('担当者の削除に失敗しました');}
+}
+function populateStaffSelect(){
+  const sel=document.getElementById('f-staff');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">未選択</option>'+staffList.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  if(staffList.includes(cur))sel.value=cur;
+}
+function openStaffModal(){renderStaffList();document.getElementById('staff-overlay').classList.add('show');}
+function closeStaffModal(){document.getElementById('staff-overlay').classList.remove('show');}
+function staffOverlayClick(e){if(e.target===document.getElementById('staff-overlay'))closeStaffModal();}
+
+function render(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const fs=document.getElementById('filter-st').value;
+  const fv=document.getElementById('filter-via').value;
+  const rows=data.filter(r=>{
+    const m=!q||(r.name||'').toLowerCase().includes(q)||(r.sns||'').toLowerCase().includes(q)||(r.staff||'').toLowerCase().includes(q);
+    return m&&(!fs||r.status===fs)&&(!fv||r.via===fv);
+  });
+  const cont=document.getElementById('cards'),emp=document.getElementById('empty');
+  cont.innerHTML='';
+  document.getElementById('section-label').textContent=rows.length+' Records';
+  if(!rows.length){emp.style.display='block';updateStats();return;}
+  emp.style.display='none';
+  rows.forEach(r=>{
+    const d=document.createElement('div');d.className='card';
+    const imgHtml=r.photo?`<img class="card-img" src="${r.photo}" alt="${esc(r.name)}">`:`<div class="card-img-ph">👤</div>`;
+    const skillsHtml=r.skills&&r.skills.length?`<div class="skills-row">${r.skills.map(s=>`<span class="skill-tag">${esc(s)}</span>`).join('')}</div>`:'';
+    const docsHtml=r.docs&&r.docs.length?`<div class="doc-row">${r.docs.map(dc=>`<a class="doc-chip" href="${dc.url}" target="_blank" rel="noopener">${esc(dc.name)}</a>`).join('')}</div>`:'';
+    const featureHtml=r.feature?`<div class="feature-box"><span class="feature-label en">FEATURE</span>${esc(r.feature)}</div>`:'';
+    d.innerHTML=`${imgHtml}<div class="card-body"><div class="card-head"><div><div class="card-name">${esc(r.name)||'（名前未入力）'}</div>${r.sns?`<div class="card-sns">@ ${esc(r.sns)}</div>`:''}</div><span class="st-tag ${ST_MAP[r.status]||'st-fu'}">${esc(r.status)}</span></div><div class="card-meta"><span class="via-dot ${VIA_DOT[r.via]||'d-o'}"></span><span>${esc(r.via)}</span>${r.staff?`<span class="sep">|</span><span>${esc(r.staff)}</span>`:''}<span class="sep">|</span><span>${fmtDate(r.date)}</span></div>${skillsHtml}${docsHtml}${featureHtml}${r.memo?`<div class="card-memo">${esc(r.memo)}</div>`:''}<div class="card-actions"><button class="act-btn en" onclick="editEntry('${r.id}')">EDIT</button><button class="act-btn en" onclick="delEntry('${r.id}')">DELETE</button></div></div>`;
+    cont.appendChild(d);
+  });
+  updateStats();
+}
+
+function updateStats(){
+  document.getElementById('s-total').textContent=data.length;
+  document.getElementById('s-casual').textContent=data.filter(r=>r.status&&r.status.startsWith('カジュアル')).length;
+  document.getElementById('s-next').textContent=data.filter(r=>r.status&&r.status.startsWith('次回面談調整')).length;
+  document.getElementById('s-agent').textContent=data.filter(r=>r.status&&r.status.startsWith('エージェント')).length;
+  document.getElementById('s-ng').textContent=data.filter(r=>r.status==='辞退'||r.status==='不合格').length;
+  document.getElementById('total-badge').textContent=data.length+' RECORDS';
+}
+
+function openModal(r){
+  editId=r?r.id:null;
+  photoData=r?r.photo||null:null;
+  docFiles=r&&r.docs?JSON.parse(JSON.stringify(r.docs)):[];
+  document.getElementById('modal-title').textContent=r?'Edit Record':'Add Record';
+  document.getElementById('f-date').value=r&&r.date?r.date:'';
+  document.getElementById('f-name').value=r&&r.name?r.name:'';
+  document.getElementById('f-sns').value=r&&r.sns?r.sns:'';
+  document.getElementById('f-feature').value=r&&r.feature?r.feature:'';
+  document.getElementById('f-memo').value=r&&r.memo?r.memo:'';
+  populateStaffSelect();
+  document.getElementById('f-staff').value=r&&r.staff?r.staff:'';
+  document.getElementById('f-status').value=r&&r.status?r.status:'カジュアル面談（採用）';
+  document.getElementById('f-via').value=r&&r.via?r.via:'LINE';
+  buildSkillGrid();setSkills(r&&r.skills?r.skills:[]);
+  renderDocList();
+  document.getElementById('upload-progress').textContent='';
+  const pa=document.getElementById('photo-area'),rp=document.getElementById('rm-photo');
+  if(photoData){pa.innerHTML=`<img src="${photoData}" alt="photo"><input type="file" accept="image/*" id="f-photo" onchange="loadPhoto(event)">`;rp.style.display='block';}
+  else{pa.innerHTML=`<span style="font-size:24px;color:var(--gray-200)">＋</span><input type="file" accept="image/*" id="f-photo" onchange="loadPhoto(event)">`;rp.style.display='none';}
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal(){document.getElementById('overlay').classList.remove('show');}
+function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
+
+async function saveEntry(){
+  if(uploadingDocs){alert('ファイルのアップロード中です。少々お待ちください。');return;}
+  const payload={
+    interview_date:document.getElementById('f-date').value||null,
+    name:document.getElementById('f-name').value,
+    sns:document.getElementById('f-sns').value,
+    staff:document.getElementById('f-staff').value,
+    status:document.getElementById('f-status').value,
+    via:document.getElementById('f-via').value,
+    skills:getSkills(),
+    feature:document.getElementById('f-feature').value,
+    memo:document.getElementById('f-memo').value,
+    photo_url:photoData,
+    docs:docFiles
+  };
+  const btn=document.getElementById('save-btn');
+  btn.disabled=true;
+  try{
+    if(supabaseReady){
+      if(editId){
+        const {error}=await sb.from('rigel_interviews').update(payload).eq('id',editId);
+        if(error)throw error;
+      }else{
+        const {error}=await sb.from('rigel_interviews').insert(payload);
+        if(error)throw error;
+      }
+      await loadRecords();
+    }else{
+      const entry={id:editId||Date.now().toString(),date:payload.interview_date,name:payload.name,sns:payload.sns,staff:payload.staff,status:payload.status,via:payload.via,skills:payload.skills,feature:payload.feature,memo:payload.memo,photo:payload.photo_url,docs:payload.docs};
+      if(editId){const i=data.findIndex(r=>r.id===editId);if(i>-1)data[i]=entry;}else data.unshift(entry);
+      render();
+    }
+    closeModal();
+  }catch(e){
+    console.error('save failed',e);
+    alert('保存に失敗しました。接続状況を確認してください。');
+  }
+  btn.disabled=false;
+}
+
+function editEntry(id){const r=data.find(x=>x.id===id);if(r)openModal(r);}
+async function delEntry(id){
+  if(!confirm('この面談記録を削除しますか？'))return;
+  try{
+    if(supabaseReady){
+      const {error}=await sb.from('rigel_interviews').delete().eq('id',id);
+      if(error)throw error;
+      await loadRecords();
+    }else{
+      data=data.filter(x=>x.id!==id);render();
+    }
+  }catch(e){console.error('delete failed',e);alert('削除に失敗しました');}
+}
+
+document.getElementById('search').addEventListener('input',render);
+document.getElementById('filter-st').addEventListener('change',render);
+document.getElementById('filter-via').addEventListener('change',render);
+
+(async function init(){
+  await loadStaff();
+  populateStaffSelect();
+  await loadRecords();
+  subscribeRealtime();
+})();
+</script>
+</body>
+</html>
